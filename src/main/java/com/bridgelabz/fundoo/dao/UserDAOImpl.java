@@ -25,21 +25,6 @@ public class UserDAOImpl implements UserDAO {
 	}
 
 	@Override
-	public boolean login(User user) {
-		boolean status=false;
-		List<User> userList=getAllUser();
-		for(User userObj:userList) {
-			if(userObj.getEmailId().equals(user.getEmailId()) && 
-					userObj.getPassword().equals(user.getPassword())) {
-				status=true;
-				break;
-			}
-
-		}
-		return status;
-	}
-
-	@Override
 	public List<User> getAllUser() {
 		Session currentSession=entityManager.unwrap(Session.class);
 		Query<User> query=currentSession.createQuery("from User",User.class);
@@ -49,20 +34,16 @@ public class UserDAOImpl implements UserDAO {
 
 	@Override
 	public boolean isVarified(User user) {
-		boolean status=false;
 		List<User> userList =getAllUser();
 		for(User userObj : userList) {
-			if(userObj.getStatus().equals(user.getStatus())) {
-				status=true;
-				break;
+			if(userObj.getStatus()) {
+				return true;
 			}
 			
 		}
-		return status;
+		return false;
 
 	}
-
-
 
 
 }

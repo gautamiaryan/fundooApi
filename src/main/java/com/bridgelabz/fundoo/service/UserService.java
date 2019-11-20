@@ -5,6 +5,8 @@ import com.bridgelabz.fundoo.model.User;
 
 public interface UserService {
 	void registerUser(UserDto user);
-	boolean login(User user);
+    boolean login(String userName,String password);
+	void parseToken(String token);
+	
 }
 

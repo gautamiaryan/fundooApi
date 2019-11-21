@@ -6,7 +6,7 @@ import com.bridgelabz.fundoo.model.User;
 
 public interface UserDAO {
 	
-	void register(User user);
+	User register(User user);
 		
 	List<User> getAllUser();
 	

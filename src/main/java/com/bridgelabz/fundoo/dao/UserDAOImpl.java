@@ -19,9 +19,10 @@ public class UserDAOImpl implements UserDAO {
 	private EntityManager entityManager;
 
 	@Override
-	public void register(User user) {
+	public User register(User user) {
 		Session currentSession =entityManager.unwrap(Session.class);
 		currentSession.save(user);
+		return user;
 	}
 
 	@Override

@@ -1,14 +1,13 @@
 package com.bridgelabz.fundoo.utility;
-import java.util.regex.*;
 public class Util {
 	
 	public boolean nameMatcher(String name) {
-		return Pattern.matches("[a-zA-Z]", name);
+		return name.matches("[a-zA-Z]*");
 	}
 	
 	public boolean mobileNumberMatcher(String mobNumber) {
 		
-		return Pattern.matches("[0-9]", mobNumber);
+		return mobNumber.matches("[0-9]*");
 	}
 	
 	public boolean emailIdMacher(String emailId) {

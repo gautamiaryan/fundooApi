@@ -16,9 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.bridgelabz.fundoo.configure.JMSProvider;
 import com.bridgelabz.fundoo.configure.JWTProvider;
 import com.bridgelabz.fundoo.dao.UserDAO;
-import com.bridgelabz.fundoo.dto.UserDto;
+import com.bridgelabz.fundoo.dto.RegistrationDTO;
 import com.bridgelabz.fundoo.model.User;
-import com.bridgelabz.fundoo.service.UserService;
 import com.bridgelabz.fundoo.utility.Util;
 
 @Service
@@ -42,27 +41,27 @@ public class UserServiceImpl implements UserService {
 
 	@Transactional
 	@Override
-	public boolean registerUser(UserDto userDto) {
+	public boolean registerUser(RegistrationDTO userDto) {
 		User user=userDTOToUser(userDto);
-		String password=user.getPassword();
-		String encryptPassword=encryptPassword(password);
-		user.setPassword(encryptPassword);
-		User user1=userDAO.register(user);
-		if(user1!=null) {
-			String email=user.getEmailId();
-			String token=provider.generateToken(email);
-			String  url="http://localhost:8080/api/varify/";
-			JMSProvider.sendEmail(email, "for authentication", url+token);
-			return true;
+		User user1;
+		if(inputValidator(user)) {
+			String password=user.getPassword();
+			String encryptPassword=encryptPassword(password);
+			user.setPassword(encryptPassword);
+			user1=userDAO.register(user);
+			if(user1!=null) {
+				String email=user.getEmailId();
+				String token=provider.generateToken(email);
+				String  url="http://localhost:8080/api/varify/";
+				JMSProvider.sendEmail(email, "for authentication", url+token);
+				return true;
+			}
 		}
-		else {
-			return false;
-		}
+		return false;
 	}
 
-
-	public UserDto userT0UserDto(User user) {
-		UserDto userDto=new UserDto();
+	public RegistrationDTO userT0UserDto(User user) {
+		RegistrationDTO userDto=new RegistrationDTO();
 		userDto.setFirstName(user.getFirstName());
 		userDto.setLastName(user.getLastName());
 		userDto.setEmailId(user.getEmailId());
@@ -71,7 +70,7 @@ public class UserServiceImpl implements UserService {
 		return userDto;
 	}
 
-	public User userDTOToUser(UserDto userDto) {
+	public User userDTOToUser(RegistrationDTO userDto) {
 		User user = new User();
 		user.setFirstName(userDto.getFirstName());
 		user.setLastName(userDto.getLastName());
@@ -169,12 +168,22 @@ public class UserServiceImpl implements UserService {
 		return false;
 	}
 
-	//	public boolean inputValidator(User user) {
-	//		return util.nameMatcher(user.getFirstName()) && 
-	//				util.nameMatcher(user.getLastName()) && 
-	//				util.emailIdMacher(user.getEmailId()) &&
-	//				util.mobileNumberMatcher(String.valueOf(user.getMobileNumber())) &&
-	//				util.passwordMatcher(user.getPassword());
-	//	}
+	public boolean inputValidator(User user) {
+		return util.nameMatcher(user.getFirstName()) && 
+				util.nameMatcher(user.getLastName()) && 
+				util.emailIdMacher(user.getEmailId()) &&
+				util.mobileNumberMatcher(String.valueOf(user.getMobileNumber())) &&
+				util.passwordMatcher(user.getPassword());
+	}
+	@Override
+	public User getUserById(Integer id) {
+		return userDAO.getUserById(id);
+				
+	}
+
+	@Override
+	public List<User> getAllUser() {
+		return userDAO.getAllUser();
+	}
 
 }

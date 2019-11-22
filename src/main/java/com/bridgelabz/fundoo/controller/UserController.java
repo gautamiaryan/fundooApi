@@ -1,7 +1,10 @@
 package com.bridgelabz.fundoo.controller;
 
+import java.util.List;
+
 import javax.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,8 +14,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.bridgelabz.fundoo.dto.UserDto;
-import com.bridgelabz.fundoo.exception.ResponseError;
+import com.bridgelabz.fundoo.dto.LoginDTO;
+import com.bridgelabz.fundoo.dto.RegistrationDTO;
+import com.bridgelabz.fundoo.exception.Response;
 import com.bridgelabz.fundoo.model.User;
 import com.bridgelabz.fundoo.service.UserService;
 
@@ -24,22 +28,25 @@ public class UserController {
 	private UserService userService;
 
 	@PostMapping("/register")
-	public ResponseEntity<ResponseError> register(@Valid @RequestBody UserDto user) {
+	@Cacheable(value="list1")
+	public ResponseEntity<Response> register(@Valid @RequestBody RegistrationDTO user) {
+
 		if(userService.registerUser(user)) {
-			return new ResponseEntity<ResponseError>(new ResponseError(HttpStatus.OK.value(), "Successfully", user),HttpStatus.OK);
+			user.setPassword("**********");
+			return new ResponseEntity<Response>(new Response(HttpStatus.OK.value(), "Successfully", user),HttpStatus.OK);
 		}
-		return new ResponseEntity<ResponseError>(new ResponseError(HttpStatus.BAD_REQUEST.value(),"Unsuccesfull",user),HttpStatus.BAD_REQUEST);
-		
+		return new ResponseEntity<Response>(new Response(HttpStatus.BAD_REQUEST.value(), "Unsuccessfull",user),HttpStatus.BAD_REQUEST);
+
 	}
 
 	@GetMapping("/login")
-	public ResponseEntity<ResponseError> login(@RequestBody User user) {
-		
+	public ResponseEntity<Response> login(@Valid @RequestBody LoginDTO user) {
+
 		if(userService.login(user.getEmailId(),user.getPassword())) {
-			return new ResponseEntity<ResponseError>(new ResponseError(HttpStatus.OK.value(), "Successfully", user),HttpStatus.OK);
+			return new ResponseEntity<Response>(new Response(HttpStatus.OK.value(), "Successfully", user),HttpStatus.OK);
 		}
-		return new ResponseEntity<ResponseError>(new ResponseError(HttpStatus.BAD_REQUEST.value(),"Unsuccesfull",user),HttpStatus.BAD_REQUEST);
-				
+		return new ResponseEntity<Response>(new Response(HttpStatus.BAD_REQUEST.value(),"Unsuccesfull",user),HttpStatus.BAD_REQUEST);
+
 	}
 
 	@GetMapping("/varify/{token}")
@@ -47,25 +54,50 @@ public class UserController {
 		userService.parseToken(token);
 		return "user is varified";
 	}
-	
+
 	@PostMapping("/resetpassword/{token}")
-	public ResponseEntity<ResponseError> resetPassword(@PathVariable String token,@RequestBody User user) {
+	public ResponseEntity<Response> resetPassword(@PathVariable String token,@RequestBody User user) {
 		if(userService.resetPassword(token, user.getPassword())) {
-			return new ResponseEntity<ResponseError>(new ResponseError(HttpStatus.OK.value(), "Successfully", user),HttpStatus.OK);
+			return new ResponseEntity<Response>(new Response(HttpStatus.OK.value(), "Successfully", user),HttpStatus.OK);
 		}
-		return new ResponseEntity<ResponseError>(new ResponseError(HttpStatus.BAD_REQUEST.value(),"Unsuccesfull",user),HttpStatus.BAD_REQUEST);
+		return new ResponseEntity<Response>(new Response(HttpStatus.BAD_REQUEST.value(),"Unsuccesfull",user),HttpStatus.BAD_REQUEST);
 
-		
+
 	}
-	
+
 	@PostMapping("/forgetpassword/")
-	public ResponseEntity<ResponseError> forgetPassword(@RequestBody User user) {
+	public ResponseEntity<Response> forgetPassword(@RequestBody User user) {
 		if(userService.forgetPassword(user.getEmailId())){
-			return new ResponseEntity<ResponseError>(new ResponseError(HttpStatus.OK.value(),"Unsuccesfull",user),HttpStatus.OK);
+			return new ResponseEntity<Response>(new Response(HttpStatus.OK.value(),"Unsuccesfull",user),HttpStatus.OK);
 		}
-		return new ResponseEntity<ResponseError>(new ResponseError(HttpStatus.BAD_REQUEST.value(),"Unsuccesfull",user),HttpStatus.BAD_REQUEST);
+		return new ResponseEntity<Response>(new Response(HttpStatus.BAD_REQUEST.value(),"Unsuccesfull",user),HttpStatus.BAD_REQUEST);
+	}
+	@GetMapping("/getUserById/{id}")
+	public ResponseEntity<Response> getAllUser(@PathVariable Integer id){
+
+		User user = userService.getUserById(id);
+		if(user!=null) {
+			return new ResponseEntity<Response>(new Response(HttpStatus.OK.value(),"User found",user),HttpStatus.OK);
+		}
+		return new ResponseEntity<Response>(new Response(HttpStatus.BAD_REQUEST.value(),"User not found",user),HttpStatus.BAD_REQUEST);
+
+
+	}
+
+	@GetMapping("/getalluser")
+	public ResponseEntity<Response> getAllUser(){
+		List<User> userList=userService.getAllUser();
+		for(User user:userList) {
+			if(user!=null) {
+				return new ResponseEntity<Response>(new Response(HttpStatus.OK.value(),"User found",user),HttpStatus.OK);
+			}
+		    return new ResponseEntity<Response>(new Response(HttpStatus.BAD_REQUEST.value(),"User not found",user),HttpStatus.BAD_REQUEST);
+		}
+		return new ResponseEntity<Response>(new Response(HttpStatus.BAD_REQUEST.value(),"User not found",null),HttpStatus.BAD_REQUEST);
 
 		
+
 	}
+
 
 }

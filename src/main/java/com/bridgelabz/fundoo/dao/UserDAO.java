@@ -12,6 +12,8 @@ public interface UserDAO {
 	
 	boolean isVarified(User user);
 	
+	User getUserById(Integer id);
+	
 	
 
 }

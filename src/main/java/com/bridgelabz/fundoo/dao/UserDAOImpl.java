@@ -40,11 +40,22 @@ public class UserDAOImpl implements UserDAO {
 			if(userObj.getStatus()) {
 				return true;
 			}
-			
+
 		}
 		return false;
 
 	}
 
+	@Override
+	public User getUserById(Integer id) {
+		List<User> userList=getAllUser();
+		User user=null;
+		for(User userObj:userList) {
+			if(userObj.getId().equals(id)) {
+				user=userObj;
+			}
+		}
+		return user;
+	}
 
 }

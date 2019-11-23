@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.bridgelabz.fundoo.dto.LoginDTO;
 import com.bridgelabz.fundoo.dto.RegistrationDTO;
 import com.bridgelabz.fundoo.exception.Response;
+import com.bridgelabz.fundoo.exception.UserExceptions;
 import com.bridgelabz.fundoo.model.User;
 import com.bridgelabz.fundoo.service.UserService;
 
@@ -79,22 +80,19 @@ public class UserController {
 		if(user!=null) {
 			return new ResponseEntity<Response>(new Response(HttpStatus.OK.value(),"User found",user),HttpStatus.OK);
 		}
-		return new ResponseEntity<Response>(new Response(HttpStatus.BAD_REQUEST.value(),"User not found",user),HttpStatus.BAD_REQUEST);
-
+		//return new ResponseEntity<Response>(new Response(HttpStatus.BAD_REQUEST.value(),"User not found",user),HttpStatus.BAD_REQUEST);
+        throw new UserExceptions("Not found");
 
 	}
 
 	@GetMapping("/getalluser")
 	public ResponseEntity<Response> getAllUser(){
 		List<User> userList=userService.getAllUser();
-		for(User user:userList) {
-			if(user!=null) {
-				return new ResponseEntity<Response>(new Response(HttpStatus.OK.value(),"User found",user),HttpStatus.OK);
-			}
-		    return new ResponseEntity<Response>(new Response(HttpStatus.BAD_REQUEST.value(),"User not found",user),HttpStatus.BAD_REQUEST);
+		if(userList.isEmpty()) {
+			return new ResponseEntity<Response>(new Response(HttpStatus.BAD_REQUEST.value(),"User not found",userList),HttpStatus.BAD_REQUEST);
 		}
-		return new ResponseEntity<Response>(new Response(HttpStatus.BAD_REQUEST.value(),"User not found",null),HttpStatus.BAD_REQUEST);
-
+	    return new ResponseEntity<Response>(new Response(HttpStatus.OK.value(),"User found",userList),HttpStatus.OK);
+			
 		
 
 	}

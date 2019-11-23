@@ -13,13 +13,18 @@ import javax.persistence.Table;
 
 import org.hibernate.annotations.Type;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 @Entity
 @Table(name="User3 ")
 @Getter
 @Setter
+@RequiredArgsConstructor
+@AllArgsConstructor
 public class User {
 	
 	@Id
@@ -33,13 +38,13 @@ public class User {
 	@Column
 	private String lastName;
 	
-	@Column
+	@Column(unique=true)
 	private String emailId;
 	
 	@Column
 	private String password;
 
-	@Column
+	@Column(unique=true)
 	private Long mobileNumber;
 	
 	@Column(nullable = false)
@@ -51,5 +56,14 @@ public class User {
 	
 	@Column
 	private LocalDateTime updatedStamp;
+
+	public User(String firstName, String lastName, String emailId, String password) {
+		this.firstName = firstName;
+		this.lastName = lastName;
+		this.emailId = emailId;
+		this.password = password;
+	}
+	
+	
 
 }

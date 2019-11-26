@@ -108,9 +108,7 @@ public class UserServiceImpl implements UserService {
 
 			}
 		}
-
 		return false;
-
 	}
 
 
@@ -175,12 +173,14 @@ public class UserServiceImpl implements UserService {
 				util.mobileNumberMatcher(String.valueOf(user.getMobileNumber())) &&
 				util.passwordMatcher(user.getPassword());
 	}
+	
+	@Transactional
 	@Override
 	public User getUserById(Integer id) {
 		return userDAO.getUserById(id);
 				
 	}
-
+    @Transactional
 	@Override
 	public List<User> getAllUser() {
 		return userDAO.getAllUser();

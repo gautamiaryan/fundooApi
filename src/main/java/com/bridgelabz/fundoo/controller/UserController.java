@@ -62,14 +62,12 @@ public class UserController {
 			return new ResponseEntity<Response>(new Response(HttpStatus.OK.value(), "Successfully", user),HttpStatus.OK);
 		}
 		return new ResponseEntity<Response>(new Response(HttpStatus.BAD_REQUEST.value(),"Unsuccesfull",user),HttpStatus.BAD_REQUEST);
-
-
 	}
 
 	@PostMapping("/forgetpassword/")
 	public ResponseEntity<Response> forgetPassword(@RequestBody User user) {
 		if(userService.forgetPassword(user.getEmailId())){
-			return new ResponseEntity<Response>(new Response(HttpStatus.OK.value(),"Unsuccesfull",user),HttpStatus.OK);
+			return new ResponseEntity<Response>(new Response(HttpStatus.OK.value(),"succesfull",user),HttpStatus.OK);
 		}
 		return new ResponseEntity<Response>(new Response(HttpStatus.BAD_REQUEST.value(),"Unsuccesfull",user),HttpStatus.BAD_REQUEST);
 	}
@@ -93,8 +91,6 @@ public class UserController {
 		}
 	    return new ResponseEntity<Response>(new Response(HttpStatus.OK.value(),"User found",userList),HttpStatus.OK);
 			
-		
-
 	}
 
 

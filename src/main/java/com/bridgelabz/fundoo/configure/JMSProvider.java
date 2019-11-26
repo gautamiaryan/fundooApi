@@ -38,7 +38,7 @@ public class JMSProvider {
 	private static void send(Session session, String fromEmail, String toEmail, String subject, String body) {
 		try {
 			MimeMessage message = new MimeMessage(session);
-			message.setFrom(new InternetAddress(fromEmail, "VivekRay"));
+			message.setFrom(new InternetAddress(fromEmail, "Gautamkumar"));
 			message.setRecipient(Message.RecipientType.TO, new InternetAddress(toEmail));
 			message.setSubject(subject);
 			message.setText(body);

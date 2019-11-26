@@ -10,11 +10,9 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 public class NotesDTO {
-	
+
 	private String title;
-	
+
 	private String description;
-	
-	
 
 }

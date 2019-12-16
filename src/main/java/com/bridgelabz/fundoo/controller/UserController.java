@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,16 +20,20 @@ import com.bridgelabz.fundoo.dto.RegistrationDTO;
 import com.bridgelabz.fundoo.exception.Response;
 import com.bridgelabz.fundoo.exception.UserExceptions;
 import com.bridgelabz.fundoo.model.User;
-import com.bridgelabz.fundoo.service.UserService;
+import com.bridgelabz.fundoo.service.IUserService;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
 
 @RestController
-@RequestMapping("/api")
+@CrossOrigin(allowedHeaders = "*", origins = "*",exposedHeaders = {"jwtToken"})
+@Api(value = "Fundoo Notes ")
 public class UserController {
 
 	@Autowired
-	private UserService userService;
+	private IUserService userService;
 
-	@PostMapping("/register")
+	@PostMapping("users/register")
 	@Cacheable(value="list1")
 	public ResponseEntity<Response> register(@Valid @RequestBody RegistrationDTO user) {
 
@@ -40,7 +45,7 @@ public class UserController {
 
 	}
 
-	@GetMapping("/login")
+    @PostMapping("users/login")
 	public ResponseEntity<Response> login(@Valid @RequestBody LoginDTO user) {
 
 		if(userService.login(user.getEmailId(),user.getPassword())) {
@@ -50,28 +55,31 @@ public class UserController {
 
 	}
 
-	@GetMapping("/varify/{token}")
+	@GetMapping("users/varify/{token}")
 	public String getTocken(@PathVariable(name="token") String token) {
 		userService.parseToken(token);
 		return "user is varified";
 	}
 
-	@PostMapping("/resetpassword/{token}")
-	public ResponseEntity<Response> resetPassword(@PathVariable String token,@RequestBody User user) {
+	@PostMapping("users/resetpassword/{token}")
+	//@CrossOrigin(origins = "http://localhost:4200/resetPassword")
+	public ResponseEntity<Response> resetPassword(@PathVariable(name="token") String token,@RequestBody User user) {
+		System.out.println("i am resetpassword");
 		if(userService.resetPassword(token, user.getPassword())) {
+			
 			return new ResponseEntity<Response>(new Response(HttpStatus.OK.value(), "Successfully", user),HttpStatus.OK);
 		}
 		return new ResponseEntity<Response>(new Response(HttpStatus.BAD_REQUEST.value(),"Unsuccesfull",user),HttpStatus.BAD_REQUEST);
 	}
 
-	@PostMapping("/forgetpassword/")
+	@PostMapping("users/forgetpassword")
 	public ResponseEntity<Response> forgetPassword(@RequestBody User user) {
 		if(userService.forgetPassword(user.getEmailId())){
 			return new ResponseEntity<Response>(new Response(HttpStatus.OK.value(),"succesfull",user),HttpStatus.OK);
 		}
 		return new ResponseEntity<Response>(new Response(HttpStatus.BAD_REQUEST.value(),"Unsuccesfull",user),HttpStatus.BAD_REQUEST);
 	}
-	@GetMapping("/getUserById/{id}")
+	@GetMapping("/users/id/{id}")
 	public ResponseEntity<Response> getAllUser(@PathVariable Integer id){
 
 		User user = userService.getUserById(id);
@@ -82,8 +90,9 @@ public class UserController {
         throw new UserExceptions("Not found");
 
 	}
-
-	@GetMapping("/getalluser")
+    
+	@ApiOperation(value = "View a list of available employees", response =User.class)
+	@GetMapping("/users")
 	public ResponseEntity<Response> getAllUser(){
 		List<User> userList=userService.getAllUser();
 		if(userList.isEmpty()) {

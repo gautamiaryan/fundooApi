@@ -1,5 +1,4 @@
-package com.bridgelabz.fundoo.configure;
-
+package com.bridgelabz.fundoo.utility;
 import org.springframework.stereotype.Component;
 
 import com.auth0.jwt.JWT;

@@ -4,7 +4,7 @@ import java.util.List;
 
 import com.bridgelabz.fundoo.model.User;
 
-public interface UserDAO {
+public interface IUserDAO {
 	
 	User register(User user);
 		

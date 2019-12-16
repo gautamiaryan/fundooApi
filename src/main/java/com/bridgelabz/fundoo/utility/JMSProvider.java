@@ -1,4 +1,4 @@
-package com.bridgelabz.fundoo.configure;
+package com.bridgelabz.fundoo.utility;
 
 import java.util.Properties;
 
@@ -9,15 +9,19 @@ import javax.mail.Transport;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 import javax.mail.Message;
+
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
+
+import com.bridgelabz.fundoo.dto.MailObject;
 
 @Component
 public class JMSProvider {
 
 	public static void sendEmail(String toEmail, String subject, String body) {
 
-		String fromEmail = "bridgelab123@gmail.com";
-		String password =  "Bridgelab@123";
+		String fromEmail = "gautamsingh1424.gs@gmail.com";
+		String password =  "Gautam007@7925";
 
 		Properties prop = new Properties();
 		prop.put("mail.smtp.auth", "true");
@@ -50,5 +54,14 @@ public class JMSProvider {
 
 		}
 	}
+	
+	
+	@RabbitListener(queues = "rmq.rube.queue")
+	public void recievedMessage(MailObject user) {
+	
+		sendEmail(user.getEmail(),user.getSubject(),user.getMessage());
+		System.out.println("Recieved Message From RabbitMQ: " + user);
+	}
 
 }
+

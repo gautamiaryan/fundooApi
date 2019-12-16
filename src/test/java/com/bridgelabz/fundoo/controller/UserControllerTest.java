@@ -7,7 +7,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.bridgelabz.fundoo.service.UserService;
+import com.bridgelabz.fundoo.service.IUserService;
 
 @RunWith(SpringRunner.class)
 @WebMvcTest(value=UserController.class)
@@ -17,7 +17,7 @@ public class UserControllerTest {
 	private MockMvc mockmvc;
 	
 	@MockBean
-	private UserService userservice;
+	private IUserService userservice;
 	
 	
 

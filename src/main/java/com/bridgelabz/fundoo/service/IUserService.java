@@ -5,7 +5,7 @@ import java.util.List;
 import com.bridgelabz.fundoo.dto.RegistrationDTO;
 import com.bridgelabz.fundoo.model.User;
 
-public interface UserService {
+public interface IUserService {
 	boolean registerUser(RegistrationDTO user);
     boolean login(String userName,String password);
 	void parseToken(String token);

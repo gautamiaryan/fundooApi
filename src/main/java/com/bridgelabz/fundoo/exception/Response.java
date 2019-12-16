@@ -23,7 +23,5 @@ public class Response implements Serializable{
 	
 	private Object data;
 	
-	
-	
 
 }

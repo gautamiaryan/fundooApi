@@ -13,19 +13,26 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.bridgelabz.fundoo.configure.JMSProvider;
-import com.bridgelabz.fundoo.configure.JWTProvider;
-import com.bridgelabz.fundoo.dao.UserDAO;
+import com.bridgelabz.fundoo.configure.RabbitMQSender;
+import com.bridgelabz.fundoo.dao.IUserDAO;
+import com.bridgelabz.fundoo.dto.MailObject;
 import com.bridgelabz.fundoo.dto.RegistrationDTO;
 import com.bridgelabz.fundoo.model.User;
+import com.bridgelabz.fundoo.utility.JMSProvider;
+import com.bridgelabz.fundoo.utility.JWTProvider;
 import com.bridgelabz.fundoo.utility.Util;
 
 @Service
-public class UserServiceImpl implements UserService {
+public class UserServiceImpl implements IUserService {
 
 	@Autowired
-	private UserDAO userDAO;
-
+	private IUserDAO userDAO;
+    @Autowired
+    private MailObject mailObject;
+    
+    @Autowired
+    private RabbitMQSender rabbitMQSender;
+    
 	@Autowired
 	private static PasswordEncoder bcryptPassword = new BCryptPasswordEncoder();
 
@@ -53,8 +60,13 @@ public class UserServiceImpl implements UserService {
 				String email=user.getEmailId();
 				String token=provider.generateToken(email);
 				String  url="http://localhost:8080/api/varify/";
-				JMSProvider.sendEmail(email, "for authentication", url+token);
+				mailObject.setEmail(userDto.getEmailId());
+				mailObject.setMessage(url+token);
+				mailObject.setSubject("verification");
+
+				rabbitMQSender.send(mailObject);
 				return true;
+
 			}
 		}
 		return false;
@@ -111,7 +123,6 @@ public class UserServiceImpl implements UserService {
 		return false;
 	}
 
-
 	private String encryptPassword(String plainTextPassword) {
 
 		return bcryptPassword.encode(plainTextPassword);
@@ -132,7 +143,7 @@ public class UserServiceImpl implements UserService {
 		return BCrypt.checkpw(rawPassword.toString(), encodedPassword);
 	}
 
-
+    @Transactional
 	@Override
 	public boolean resetPassword(String emailId,String password) {
 		String email=provider.parseToken(emailId);
@@ -158,7 +169,8 @@ public class UserServiceImpl implements UserService {
 			if(user.getEmailId().equals(emailId)) {
 				String email=user.getEmailId();
 				String token=provider.generateToken(email);
-				String  url="http://localhost:8080/api/resetpassword/";
+				//String  url="http://localhost:8080/api/resetpassword/";
+				String url="http://localhost:4200/resetPassword/";
 				JMSProvider.sendEmail(email, "for reset password", url+token);
 				return true;
 			}

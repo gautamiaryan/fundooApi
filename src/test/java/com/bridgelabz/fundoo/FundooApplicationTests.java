@@ -47,7 +47,7 @@ class FundooApplicationTests {
 	public void loginTest() {
 		String email="gautamiaryan@gmail.com";
 		String password="Gautam007@7";
-		boolean status=userService.login(email, password);
+		String status=userService.login(email, password);
 		assertEquals(true, status);
 		
 	}
@@ -55,7 +55,7 @@ class FundooApplicationTests {
 	
 	@Test
 	public void getUserById() {
-		int id=1;
+		Long id=1L;
 		
 		User user=userService.getUserById(id);
 		

@@ -20,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name="User3 ")
+@Table(name="User3")
 @Getter
 @Setter
 @RequiredArgsConstructor
@@ -29,13 +29,13 @@ public class User {
 	
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column
-	private Integer id;
+	@Column(name="user_id")
+	private Long userId;
 	
-	@Column
+	@Column()
 	private String firstName;
 	
-	@Column
+	@Column()
 	private String lastName;
 	
 	@Column(unique=true)
@@ -56,7 +56,7 @@ public class User {
 	
 	@Column
 	private LocalDateTime updatedStamp;
-
+    
 	public User(String firstName, String lastName, String emailId, String password) {
 		this.firstName = firstName;
 		this.lastName = lastName;

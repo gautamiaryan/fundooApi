@@ -20,8 +20,8 @@ public class JMSProvider {
 
 	public static void sendEmail(String toEmail, String subject, String body) {
 
-		String fromEmail = "gautamsingh1424.gs@gmail.com";
-		String password =  "Gautam007@7925";
+		String fromEmail = System.getenv("email");
+		String password = System.getenv("password");
 
 		Properties prop = new Properties();
 		prop.put("mail.smtp.auth", "true");

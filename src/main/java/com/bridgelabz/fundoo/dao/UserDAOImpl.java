@@ -22,6 +22,10 @@ public class UserDAOImpl implements IUserDAO {
 	public User register(User user) {
 		Session currentSession =entityManager.unwrap(Session.class);
 		currentSession.save(user);
+		Query<User> query=currentSession.createQuery("from User where email_id='"+user.getEmailId()+"'",User.class);
+		List<User> userList=query.getResultList();
+		user.setUserId(userList.get(0).getUserId());
+		
 		return user;
 	}
 
@@ -47,11 +51,11 @@ public class UserDAOImpl implements IUserDAO {
 	}
 
 	@Override
-	public User getUserById(Integer id) {
+	public User getUserById(Long id) {
 		List<User> userList=getAllUser();
 		User user=null;
 		for(User userObj:userList) {
-			if(userObj.getId().equals(id)) {
+			if(userObj.getUserId().equals(id)) {
 				user=userObj;
 			}
 		}

@@ -7,6 +7,8 @@ import java.util.regex.Pattern;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,6 +19,7 @@ import com.bridgelabz.fundoo.configure.RabbitMQSender;
 import com.bridgelabz.fundoo.dao.IUserDAO;
 import com.bridgelabz.fundoo.dto.MailObject;
 import com.bridgelabz.fundoo.dto.RegistrationDTO;
+import com.bridgelabz.fundoo.exception.UserExceptions;
 import com.bridgelabz.fundoo.model.User;
 import com.bridgelabz.fundoo.utility.JMSProvider;
 import com.bridgelabz.fundoo.utility.JWTProvider;
@@ -40,7 +43,7 @@ public class UserServiceImpl implements IUserService {
 
 	private Pattern BCRYPT_PATTERN = Pattern.compile("\\A\\$2(a|y|b)?\\$(\\d\\d)\\$[./0-9A-Za-z]{53}");
 
-
+     
 	private Util util=new Util();
 
 	@Autowired
@@ -57,8 +60,9 @@ public class UserServiceImpl implements IUserService {
 			user.setPassword(encryptPassword);
 			user1=userDAO.register(user);
 			if(user1!=null) {
-				String email=user.getEmailId();
-				String token=provider.generateToken(email);
+				//String email=user.getEmailId();
+				String id=user.getUserId().toString();
+				String token=provider.generateToken(id);
 				String  url="http://localhost:8080/api/varify/";
 				mailObject.setEmail(userDto.getEmailId());
 				mailObject.setMessage(url+token);
@@ -68,8 +72,13 @@ public class UserServiceImpl implements IUserService {
 				return true;
 
 			}
+			else{
+				new UserExceptions("Already Exist");
+				
+			}
 		}
 		return false;
+		//new UserExceptions("Validation");
 	}
 
 	public RegistrationDTO userT0UserDto(User user) {
@@ -98,11 +107,11 @@ public class UserServiceImpl implements IUserService {
 	@Transactional
 	@Override
 	public void parseToken(String token) {
-		String email=provider.parseToken(token);
+		Long user_id=Long.parseLong(provider.parseToken(token));
 		List<User> userList=userDAO.getAllUser();
 		for(User user:userList) {
-			String checkEmail=user.getEmailId();
-			if(email.equals(checkEmail)) {
+			Long check_user_id=user.getUserId();
+			if(user_id==check_user_id) {
 				user.setStatus(true);
 				userDAO.register(user);
 			}
@@ -110,17 +119,20 @@ public class UserServiceImpl implements IUserService {
 	}
 	@Transactional
 	@Override
-	public boolean login(String emailId,String password) {
+	public String login(String emailId,String password) {
+		String tocken=null;
 		List<User> userList =userDAO.getAllUser(); 
 		for(User user:userList) {
 			if(user.getEmailId().equalsIgnoreCase(emailId) && matches(password,user.getPassword())) {
 				if(userDAO.isVarified(user)) {
-					return true;
+					String id=user.getUserId().toString();
+					tocken=provider.generateToken(id);
+					return tocken;
 				}
 
 			}
 		}
-		return false;
+		return tocken;
 	}
 
 	private String encryptPassword(String plainTextPassword) {
@@ -187,8 +199,10 @@ public class UserServiceImpl implements IUserService {
 	}
 	
 	@Transactional
+	@Cacheable("user")
+	@CachePut(value="user",key="#id")
 	@Override
-	public User getUserById(Integer id) {
+	public User getUserById(Long id) {
 		return userDAO.getUserById(id);
 				
 	}
@@ -196,6 +210,13 @@ public class UserServiceImpl implements IUserService {
 	@Override
 	public List<User> getAllUser() {
 		return userDAO.getAllUser();
+	}
+
+	@Override
+	public Long getUserId(String token) {
+		Long user_id=Long.valueOf(token);
+		User user=userDAO.getUserById(user_id);
+		return user.getUserId();
 	}
 
 }

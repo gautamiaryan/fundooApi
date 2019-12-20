@@ -10,6 +10,7 @@ public class UserExceptionController {
 	@ExceptionHandler(value = UserExceptions.class)
 	  public ResponseEntity<Object> exception(UserExceptions exception) {
 	     return new ResponseEntity<Object>( exception.getMessage(),HttpStatus.NOT_FOUND);
+	     
 
 	  }
 

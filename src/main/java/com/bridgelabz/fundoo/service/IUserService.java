@@ -7,12 +7,13 @@ import com.bridgelabz.fundoo.model.User;
 
 public interface IUserService {
 	boolean registerUser(RegistrationDTO user);
-    boolean login(String userName,String password);
+    String login(String userName,String password);
 	void parseToken(String token);
 	boolean resetPassword(String emailId,String password);
 	boolean forgetPassword(String emailId);
-	User getUserById(Integer id);
+	User getUserById(Long id);
 	List<User> getAllUser();
+	Long getUserId(String token);
 	
 }
 

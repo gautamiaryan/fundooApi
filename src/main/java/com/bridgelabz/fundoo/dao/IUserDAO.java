@@ -12,7 +12,7 @@ public interface IUserDAO {
 	
 	boolean isVarified(User user);
 	
-	User getUserById(Integer id);
+	User getUserById(Long id);
 	
 	
 

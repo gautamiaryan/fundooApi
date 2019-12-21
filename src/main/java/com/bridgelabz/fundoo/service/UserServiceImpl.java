@@ -214,8 +214,9 @@ public class UserServiceImpl implements IUserService {
 
 	@Override
 	public Long getUserId(String token) {
-		Long user_id=Long.valueOf(token);
-		User user=userDAO.getUserById(user_id);
+		Long id=Long.parseLong(provider.parseToken(token));
+		System.out.println(id);
+		User user=userDAO.getUserById(id);
 		return user.getUserId();
 	}
 

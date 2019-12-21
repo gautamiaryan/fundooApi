@@ -105,9 +105,13 @@ public class UserController {
 	}
     
 	
-	 @GetMapping("users/verify")
-     public Long getUserId(@RequestHeader String token) {
+	 @GetMapping("users/verify/{token}")
+     public Long getUserId(@PathVariable String token) {
+		System.out.println("fgfgfhfgfg");
 		return userService.getUserId(token);
+		
      }
+	
+
 
 }

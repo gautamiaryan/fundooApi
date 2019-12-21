@@ -14,5 +14,8 @@ public class JWTProvider {
 	public String parseToken(String token) {
 		return JWT.require(Algorithm.HMAC512(secret)).build().verify(token).getClaim("email").asString();
 	}
+//	public String parseToken(String token) {
+//		return JWT.require(Algorithm.HMAC512(secret)).build().verify(token).getClaim("email").asString();
+//	}
 	
 }

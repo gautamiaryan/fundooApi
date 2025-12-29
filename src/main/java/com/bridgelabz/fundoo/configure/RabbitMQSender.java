@@ -8,17 +8,17 @@ import com.bridgelabz.fundoo.dto.MailObject;
 
 @Component
 public class RabbitMQSender {
-	@Autowired
-	private RabbitTemplate rabbitTemplate;
-	
-	@Value("rmq.rube.exchange")
-	private String exchange;
-	
-	@Value("rube.key")
-	private String routingkey;	
-	
-	public void send(MailObject message) {
-		rabbitTemplate.convertAndSend(exchange, routingkey, message);
-	    
-	}
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+    @Value("rmq.rube.exchange")
+    private String exchange;
+
+    @Value("rube.key")
+    private String routingkey;
+
+    public void send(MailObject message) {
+	rabbitTemplate.convertAndSend(exchange, routingkey, message);
+
+    }
 }

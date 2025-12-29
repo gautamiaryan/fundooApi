@@ -5,15 +5,12 @@ import java.util.List;
 import com.bridgelabz.fundoo.model.User;
 
 public interface IUserDAO {
-	
-	User register(User user);
-		
-	List<User> getAllUser();
-	
-	boolean isVarified(User user);
-	
-	User getUserById(Long id);
-	
-	
 
+    User persistUser(User user);
+
+    List<User> getAllUser();
+
+    User getUserById(Long id);
+
+    User getUserByEmail(String emailId);
 }

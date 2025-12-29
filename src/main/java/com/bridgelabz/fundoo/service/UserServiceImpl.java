@@ -1,11 +1,10 @@
 package com.bridgelabz.fundoo.service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -13,211 +12,264 @@ import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import org.springframework.validation.BeanPropertyBindingResult;
 
 import com.bridgelabz.fundoo.configure.RabbitMQSender;
 import com.bridgelabz.fundoo.dao.IUserDAO;
+import com.bridgelabz.fundoo.dto.LoginDTO;
 import com.bridgelabz.fundoo.dto.MailObject;
 import com.bridgelabz.fundoo.dto.RegistrationDTO;
 import com.bridgelabz.fundoo.exception.UserExceptions;
 import com.bridgelabz.fundoo.model.User;
+import com.bridgelabz.fundoo.service.helper.UserServiceHelper;
+import com.bridgelabz.fundoo.service.validator.LoginValidator;
+import com.bridgelabz.fundoo.service.validator.UserRegistrationValidator;
 import com.bridgelabz.fundoo.utility.JMSProvider;
 import com.bridgelabz.fundoo.utility.JWTProvider;
-import com.bridgelabz.fundoo.utility.Util;
 
 @Service
 public class UserServiceImpl implements IUserService {
 
-	@Autowired
-	private IUserDAO userDAO;
+    private static final String RESET_PASSWORD_URL = "http://localhost:4200/resetPassword/";
+    private static final String VERIFICATION_URL = "http://localhost:8080/api/verify/";
+    private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
+
     @Autowired
-    private MailObject mailObject;
-    
+    private IUserDAO userDAO;
+
+    @Autowired
+    private UserServiceHelper userServiceHelper;
+
+    @Autowired
+    private UserRegistrationValidator userRegistrationValidator;
+
+    @Autowired
+    private LoginValidator loginValidator;
+
     @Autowired
     private RabbitMQSender rabbitMQSender;
-    
-	@Autowired
-	private static PasswordEncoder bcryptPassword = new BCryptPasswordEncoder();
 
-	private final Log logger = LogFactory.getLog(getClass());
+    @Autowired
+    private JWTProvider provider;
 
-	private Pattern BCRYPT_PATTERN = Pattern.compile("\\A\\$2(a|y|b)?\\$(\\d\\d)\\$[./0-9A-Za-z]{53}");
+    @Override
+    public RegistrationDTO registerUser(RegistrationDTO registrationDTO) {
 
-     
-	private Util util=new Util();
+	logger.debug("Starting user registration for email={}", registrationDTO.getEmailId());
 
-	@Autowired
-	private JWTProvider provider;
+	BeanPropertyBindingResult errors = new BeanPropertyBindingResult(registrationDTO, "registrationDTO");
 
-	@Transactional
-	@Override
-	public boolean registerUser(RegistrationDTO userDto) {
-		User user=userDTOToUser(userDto);
-		User user1;
-		if(inputValidator(user)) {
-			String password=user.getPassword();
-			String encryptPassword=encryptPassword(password);
-			user.setPassword(encryptPassword);
-			user1=userDAO.register(user);
-			if(user1!=null) {
-				//String email=user.getEmailId();
-				String id=user.getUserId().toString();
-				String token=provider.generateToken(id);
-				String  url="http://localhost:8080/api/varify/";
-				mailObject.setEmail(userDto.getEmailId());
-				mailObject.setMessage(url+token);
-				mailObject.setSubject("verification");
+	userRegistrationValidator.validate(registrationDTO, errors);
 
-				rabbitMQSender.send(mailObject);
-				return true;
-
-			}
-			else{
-				new UserExceptions("Already Exist");
-				
-			}
-		}
-		return false;
-		//new UserExceptions("Validation");
+	if (errors.hasErrors()) {
+	    logger.warn("Registration validation failed for email={} | error={}", registrationDTO.getEmailId(),
+		    errors.getAllErrors().get(0).getDefaultMessage());
+	    throw new UserExceptions(errors.getAllErrors().get(0).getDefaultMessage());
 	}
 
-	public RegistrationDTO userT0UserDto(User user) {
-		RegistrationDTO userDto=new RegistrationDTO();
-		userDto.setFirstName(user.getFirstName());
-		userDto.setLastName(user.getLastName());
-		userDto.setEmailId(user.getEmailId());
-		userDto.setPassword(user.getPassword());
-		userDto.setMobileNumber(user.getMobileNumber());
-		return userDto;
+	User user = userServiceHelper.convertToUser(registrationDTO);
+	user.setPassword(userServiceHelper.encryptPassword(user.getPassword()));
+
+	logger.debug("Persisting user entity for email={}", user.getEmailId());
+
+	User savedUser = userDAO.persistUser(user);
+
+	if (savedUser == null || savedUser.getUserId() == null) {
+	    logger.error("User persistence failed (duplicate?) for email={}", registrationDTO.getEmailId());
+	    throw new UserExceptions("User already exists");
 	}
 
-	public User userDTOToUser(RegistrationDTO userDto) {
-		User user = new User();
-		user.setFirstName(userDto.getFirstName());
-		user.setLastName(userDto.getLastName());
-		user.setEmailId(userDto.getEmailId());
-		user.setPassword(userDto.getPassword());
-		user.setMobileNumber(userDto.getMobileNumber());
-		user.setStatus(false);
-		user.setCreatedStamp(LocalDateTime.now());
-		user.setUpdatedStamp(LocalDateTime.now());
-		return user;
+	logger.info("User persisted successfully with id={} for email={}", savedUser.getUserId(),
+		savedUser.getEmailId());
+
+	String token = provider.generateToken(savedUser.getUserId().toString());
+
+	MailObject mail = new MailObject();
+	mail.setEmail(registrationDTO.getEmailId());
+	mail.setSubject("Account Verification");
+	mail.setMessage(VERIFICATION_URL + token);
+
+	rabbitMQSender.send(mail);
+
+	logger.debug("Verification mail sent for email={}", registrationDTO.getEmailId());
+
+	registrationDTO.setPassword("*****************");
+
+	return registrationDTO;
+    }
+
+    @Override
+    public String login(LoginDTO loginDTO) {
+	logger.debug("Login attempt for email={}", loginDTO.getEmailId());
+
+	BeanPropertyBindingResult errors = new BeanPropertyBindingResult(loginDTO, "loginDTO");
+
+	loginValidator.validate(loginDTO, errors);
+
+	if (errors.hasErrors()) {
+	    logger.warn("Login validation failed for email={} | error={}", loginDTO.getEmailId(),
+		    errors.getAllErrors().get(0).getDefaultMessage());
+	    throw new UserExceptions(errors.getAllErrors().get(0).getDefaultMessage());
 	}
 
-	@Transactional
-	@Override
-	public void parseToken(String token) {
-		Long user_id=Long.parseLong(provider.parseToken(token));
-		List<User> userList=userDAO.getAllUser();
-		for(User user:userList) {
-			Long check_user_id=user.getUserId();
-			if(user_id==check_user_id) {
-				user.setStatus(true);
-				userDAO.register(user);
-			}
-		}
-	}
-	@Transactional
-	@Override
-	public String login(String emailId,String password) {
-		String tocken=null;
-		List<User> userList =userDAO.getAllUser(); 
-		for(User user:userList) {
-			if(user.getEmailId().equalsIgnoreCase(emailId) && matches(password,user.getPassword())) {
-				if(userDAO.isVarified(user)) {
-					String id=user.getUserId().toString();
-					tocken=provider.generateToken(id);
-					return tocken;
-				}
+	User user = userDAO.getUserByEmail(loginDTO.getEmailId());
 
-			}
-		}
-		return tocken;
+	if (user == null) {
+	    logger.warn("Login failed: user not found for email={}", loginDTO.getEmailId());
+	    throw new UserExceptions("UserId/Password is incorrect");
 	}
 
-	private String encryptPassword(String plainTextPassword) {
-
-		return bcryptPassword.encode(plainTextPassword);
-
+	if (!user.getStatus()) {
+	    logger.warn("Login failed: inactive user for email={}", loginDTO.getEmailId());
+	    throw new UserExceptions("User account is not active");
 	}
 
-	public boolean matches(CharSequence rawPassword, String encodedPassword) {
-		if (encodedPassword == null || encodedPassword.length() == 0) {
-			logger.warn("Empty encoded password");
-			return false;
-		}
+	if (userServiceHelper.matches(loginDTO.getPassword(), user.getPassword())) {
 
-		if (!BCRYPT_PATTERN.matcher(encodedPassword).matches()) {
-			logger.warn("Encoded password does not look like BCrypt");
-			return false;
-		}
+	    String token = provider.generateToken(user.getUserId().toString());
 
-		return BCrypt.checkpw(rawPassword.toString(), encodedPassword);
+	    logger.info("Login successful for email={} | userId={}", loginDTO.getEmailId(), user.getUserId());
+
+	    return token;
 	}
 
-    @Transactional
-	@Override
-	public boolean resetPassword(String emailId,String password) {
-		String email=provider.parseToken(emailId);
-		List<User> userList=userDAO.getAllUser();
-		for(User user :userList) {
-			if(user.getEmailId().equals(email)) {
-				String newPassword=encryptPassword(password);
-				user.setPassword(newPassword);
-				userDAO.register(user);
-				return true;
-			}
-		}
-		return false;
+	logger.warn("Login failed: password mismatch for email={}", loginDTO.getEmailId());
 
+	throw new UserExceptions("UserId/Password is incorrect");
+    }
 
+    @Override
+    public void parseToken(String token) {
+	Long user_id = Long.parseLong(provider.parseToken(token));
+	List<User> userList = userDAO.getAllUser();
+	for (User user : userList) {
+	    Long check_user_id = user.getUserId();
+	    if (user_id == check_user_id) {
+		user.setStatus(true);
+		userDAO.persistUser(user);
+	    }
 	}
+    }
 
+    @Override
+    public boolean resetPassword(String token, String newPassword) {
+	try {
+	    String email = provider.parseToken(token);
+	    if (email == null || email.isEmpty()) {
+		logger.warn("Invalid or expired token provided");
+		throw new UserExceptions("Invalid token");
+	    }
 
-	@Override
-	public boolean forgetPassword(String emailId) {
-		List<User> userList=userDAO.getAllUser();
-		for(User user:userList) {
-			if(user.getEmailId().equals(emailId)) {
-				String email=user.getEmailId();
-				String token=provider.generateToken(email);
-				//String  url="http://localhost:8080/api/resetpassword/";
-				String url="http://localhost:4200/resetPassword/";
-				JMSProvider.sendEmail(email, "for reset password", url+token);
-				return true;
-			}
-		}
-		return false;
-	}
+	    User user = userDAO.getUserByEmail(email);
+	    if (user == null) {
+		logger.warn("No user found for email={}", email);
+		throw new UserExceptions("User not found");
+	    }
 
-	public boolean inputValidator(User user) {
-		return util.nameMatcher(user.getFirstName()) && 
-				util.nameMatcher(user.getLastName()) && 
-				util.emailIdMacher(user.getEmailId()) &&
-				util.mobileNumberMatcher(String.valueOf(user.getMobileNumber())) &&
-				util.passwordMatcher(user.getPassword());
-	}
-	
-	@Transactional
-	@Cacheable("user")
-	@CachePut(value="user",key="#id")
-	@Override
-	public User getUserById(Long id) {
-		return userDAO.getUserById(id);
-				
-	}
-    @Transactional
-	@Override
-	public List<User> getAllUser() {
-		return userDAO.getAllUser();
-	}
+	    if (!user.getEmailId().equals(email)) {
+		logger.warn("Token email does not match user email | tokenEmail={} userEmail={}", email,
+			user.getEmailId());
+		throw new UserExceptions("Token does not match user");
+	    }
 
-	@Override
-	public Long getUserId(String token) {
-		Long id=Long.parseLong(provider.parseToken(token));
-		System.out.println(id);
-		User user=userDAO.getUserById(id);
-		return user.getUserId();
+	    String encryptedPassword = userServiceHelper.encryptPassword(newPassword);
+	    user.setPassword(encryptedPassword);
+	    userDAO.persistUser(user);
+
+	    logger.info("Password reset successful for email={}", email);
+	    return true;
+
+	} catch (UserExceptions ex) {
+	    logger.error("Password reset failed: {}", ex.getMessage());
+	    throw ex;
+
+	} catch (Exception ex) {
+	    logger.error("Unexpected error during password reset", ex);
+	    throw new UserExceptions("Password reset failed due to internal error");
 	}
+    }
+
+    @Override
+    public boolean forgetPassword(String emailId) {
+	try {
+	    User user = userDAO.getUserByEmail(emailId);
+	    if (user == null) {
+		logger.warn("No user found for email={}", emailId);
+		throw new UserExceptions("User not found with email: " + emailId);
+	    }
+
+	    if (!user.getEmailId().equals(emailId)) {
+		logger.warn("Email mismatch | inputEmail={} storedEmail={}", emailId, user.getEmailId());
+		throw new UserExceptions("Email does not match user record");
+	    }
+
+	    String token = provider.generateToken(user.getEmailId());
+	    JMSProvider.sendEmail(user.getEmailId(), "Password Reset", RESET_PASSWORD_URL + token);
+
+	    logger.info("Password reset email sent successfully for email={}", emailId);
+	    return true;
+
+	} catch (UserExceptions ex) {
+	    logger.error("Forget password failed: {}", ex.getMessage());
+	    throw ex;
+
+	} catch (Exception ex) {
+	    logger.error("Unexpected error during forget password for email={}", emailId, ex);
+	    throw new UserExceptions("Failed to process forget password request");
+	}
+    }
+
+    @Cacheable("user")
+    @CachePut(value = "user", key = "#id")
+    @Override
+    public User getUserById(Long id) {
+	try {
+	    User user = userDAO.getUserById(id);
+	    if (user == null) {
+		logger.warn("User not found with id={}", id);
+		throw new UserExceptions("User not found with id: " + id);
+	    }
+	    logger.debug("Fetched user with id={}", id);
+	    return user;
+	} catch (Exception ex) {
+	    logger.error("Error fetching user by id={}", id, ex);
+	    throw new UserExceptions("Failed to fetch user");
+	}
+    }
+
+    @Override
+    public List<User> getAllUser() {
+	try {
+	    List<User> users = userDAO.getAllUser();
+	    logger.debug("Fetched {} users", users.size());
+	    return users;
+	} catch (Exception ex) {
+	    logger.error("Error fetching all users", ex);
+	    throw new UserExceptions("Failed to fetch users");
+	}
+    }
+
+    @Override
+    public Long getUserId(String token) {
+	try {
+	    Long id = Long.parseLong(provider.parseToken(token));
+	    logger.debug("Parsed user id={} from token", id);
+
+	    User user = userDAO.getUserById(id);
+	    if (user == null) {
+		logger.warn("User not found for token | id={}", id);
+		throw new UserExceptions("User not found for provided token");
+	    }
+
+	    return user.getUserId();
+	} catch (NumberFormatException ex) {
+	    logger.error("Invalid token format: {}", token, ex);
+	    throw new UserExceptions("Invalid token");
+	} catch (Exception ex) {
+	    logger.error("Error getting user id from token: {}", token, ex);
+	    throw new UserExceptions("Failed to retrieve user id");
+	}
+    }
 
 }

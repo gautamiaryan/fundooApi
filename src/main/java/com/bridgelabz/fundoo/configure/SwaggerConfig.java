@@ -16,18 +16,18 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
 @EnableSwagger2
 public class SwaggerConfig {
 
-	@Bean
-	public Docket api() {
-		return new Docket(DocumentationType.SWAGGER_2).select()
-				.apis(RequestHandlerSelectors.basePackage("com.bridgelabz.fundoo.controller"))
-				.paths(PathSelectors.regex("/.*")).build().apiInfo(apiEndPointsInfo());
-	}
+    @Bean
+    Docket api() {
+	return new Docket(DocumentationType.SWAGGER_2).select()
+		.apis(RequestHandlerSelectors.basePackage("com.bridgelabz.fundoo.controller"))
+		.paths(PathSelectors.regex("/.*")).build().apiInfo(apiEndPointsInfo());
+    }
 
-	private ApiInfo apiEndPointsInfo() {
-		return new ApiInfoBuilder().title("Spring Boot REST API").description("Fundoo Notes User REST API")
-				.contact(new Contact("Gautam Singh", "http://www.github.com/gautamiaryan", "gautamiaryan@gmail.com"))
-				.license("Apache 2.0").licenseUrl("http://www.apache.org/licenses/LICENSE-2.0.html").version("1.0.0")
-				.build();
-	}
+    private ApiInfo apiEndPointsInfo() {
+	return new ApiInfoBuilder().title("Spring Boot REST API").description("Fundoo Notes User REST API")
+		.contact(new Contact("Gautam Singh", "http://www.github.com/gautamiaryan", "gautamiaryan@gmail.com"))
+		.license("Apache 2.0").licenseUrl("http://www.apache.org/licenses/LICENSE-2.0.html").version("1.0.0")
+		.build();
+    }
 
 }

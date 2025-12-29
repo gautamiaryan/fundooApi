@@ -13,32 +13,31 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitmqConfig {
 
-	 @Autowired
-	 private ConnectionFactory rabbitConnectionFactory;
+    @Autowired
+    private ConnectionFactory rabbitConnectionFactory;
 
-	
-	 @Bean
-	 DirectExchange rubeExchange() {
-	  return new DirectExchange("rmq.rube.exchange", true, false);
-	 }
+    @Bean
+    DirectExchange rubeExchange() {
+	return new DirectExchange("rmq.rube.exchange", true, false);
+    }
 
-	 @Bean
-	 public Queue rubeQueue() {
-	  return new Queue("rmq.rube.queue", true);
-	 }
+    @Bean
+    public Queue rubeQueue() {
+	return new Queue("rmq.rube.queue", true);
+    }
 
-	 @Bean
-	 Binding rubeExchangeBinding(DirectExchange rubeExchange, Queue rubeQueue) {
-	  return BindingBuilder.bind(rubeQueue).to(rubeExchange).with("rube.key");
-	 }
+    @Bean
+    Binding rubeExchangeBinding(DirectExchange rubeExchange, Queue rubeQueue) {
+	return BindingBuilder.bind(rubeQueue).to(rubeExchange).with("rube.key");
+    }
 
-	 @Bean
-	 public RabbitTemplate rubeExchangeTemplate() {
-	  RabbitTemplate r = new RabbitTemplate(rabbitConnectionFactory);
-	  r.setExchange("rmq.rube.exchange");
-	  r.setRoutingKey("rube.key");
-	  r.setConnectionFactory(rabbitConnectionFactory);
-	  return r;
-	 }
+    @Bean
+    public RabbitTemplate rubeExchangeTemplate() {
+	RabbitTemplate r = new RabbitTemplate(rabbitConnectionFactory);
+	r.setExchange("rmq.rube.exchange");
+	r.setRoutingKey("rube.key");
+	r.setConnectionFactory(rabbitConnectionFactory);
+	return r;
+    }
 
 }

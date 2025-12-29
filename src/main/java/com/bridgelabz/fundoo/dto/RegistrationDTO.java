@@ -11,14 +11,14 @@ import lombok.Setter;
 @RequiredArgsConstructor
 public class RegistrationDTO {
 
-	private String firstName;
+    private String firstName;
 
-	private String lastName;
+    private String lastName;
 
-	private String emailId;
+    private String emailId;
 
-	private String password;
+    private String password;
 
-	private Long mobileNumber;
+    private Long mobileNumber;
 
 }

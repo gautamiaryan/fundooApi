@@ -8,20 +8,24 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+
 @ToString
 @Data
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Response implements Serializable{
+public class Response implements Serializable {
 
+    /**
+    * 
+    */
+    private static final long serialVersionUID = -5096830986120543614L;
 
-	private Integer status;
-	
-	private String response;
-	
-	private Object data;
-	
+    private Integer status;
+
+    private String response;
+
+    private Object data;
 
 }

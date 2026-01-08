@@ -9,7 +9,7 @@ import com.bridgelabz.fundoo.dto.LoginDTO;
 import com.bridgelabz.fundoo.utility.Util;
 
 @Component
-public class LoginValidator implements Validator {
+public class UserLoginValidator implements Validator {
 
     @Override
     public boolean supports(Class<?> clazz) {

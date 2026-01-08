@@ -1,18 +1,14 @@
 package com.bridgelabz.fundoo.service;
 
 import java.util.List;
-import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.security.crypto.bcrypt.BCrypt;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 import org.springframework.validation.BeanPropertyBindingResult;
 
 import com.bridgelabz.fundoo.configure.RabbitMQSender;
@@ -20,13 +16,16 @@ import com.bridgelabz.fundoo.dao.IUserDAO;
 import com.bridgelabz.fundoo.dto.LoginDTO;
 import com.bridgelabz.fundoo.dto.MailObject;
 import com.bridgelabz.fundoo.dto.RegistrationDTO;
+import com.bridgelabz.fundoo.exception.InvalidRequestException;
 import com.bridgelabz.fundoo.exception.UserExceptions;
 import com.bridgelabz.fundoo.model.User;
 import com.bridgelabz.fundoo.service.helper.UserServiceHelper;
-import com.bridgelabz.fundoo.service.validator.LoginValidator;
+import com.bridgelabz.fundoo.service.validator.UserLoginValidator;
 import com.bridgelabz.fundoo.service.validator.UserRegistrationValidator;
 import com.bridgelabz.fundoo.utility.JMSProvider;
 import com.bridgelabz.fundoo.utility.JWTProvider;
+
+import jakarta.transaction.Transactional;
 
 @Service
 public class UserServiceImpl implements IUserService {
@@ -45,14 +44,18 @@ public class UserServiceImpl implements IUserService {
     private UserRegistrationValidator userRegistrationValidator;
 
     @Autowired
-    private LoginValidator loginValidator;
+    private UserLoginValidator userLoginValidator;
 
     @Autowired
     private RabbitMQSender rabbitMQSender;
 
     @Autowired
-    private JWTProvider provider;
+    private JWTProvider jwtProvider;
 
+    @Autowired
+    private JMSProvider jmsProvider;
+    
+    @Transactional
     @Override
     public RegistrationDTO registerUser(RegistrationDTO registrationDTO) {
 
@@ -72,31 +75,31 @@ public class UserServiceImpl implements IUserService {
 	user.setPassword(userServiceHelper.encryptPassword(user.getPassword()));
 
 	logger.debug("Persisting user entity for email={}", user.getEmailId());
+	try {
+	    User savedUser = userDAO.persistUser(user);
+	    if (savedUser == null || savedUser.getUserId() == null) {
+		logger.error("User persistence failed (duplicate?) for email={}", registrationDTO.getEmailId());
+		throw new UserExceptions("User already exists");
+	    }
 
-	User savedUser = userDAO.persistUser(user);
+	    logger.info("User persisted successfully with id={} for email={}", savedUser.getUserId(),
+		    savedUser.getEmailId());
 
-	if (savedUser == null || savedUser.getUserId() == null) {
-	    logger.error("User persistence failed (duplicate?) for email={}", registrationDTO.getEmailId());
-	    throw new UserExceptions("User already exists");
+	    String token = jwtProvider.generateToken(savedUser.getUserId().toString());
+
+	    MailObject mail = new MailObject();
+	    mail.setEmail(registrationDTO.getEmailId());
+	    mail.setSubject("Account Verification");
+	    mail.setMessage(VERIFICATION_URL + token);
+
+	    rabbitMQSender.send(mail);
+
+	    logger.debug("Verification mail sent for email={}", registrationDTO.getEmailId());
+	    registrationDTO.setPassword("*****************");
+	    return registrationDTO;
+	} catch (DataIntegrityViolationException e) {
+	    throw new InvalidRequestException("User already exists with emailId : " + user.getEmailId());
 	}
-
-	logger.info("User persisted successfully with id={} for email={}", savedUser.getUserId(),
-		savedUser.getEmailId());
-
-	String token = provider.generateToken(savedUser.getUserId().toString());
-
-	MailObject mail = new MailObject();
-	mail.setEmail(registrationDTO.getEmailId());
-	mail.setSubject("Account Verification");
-	mail.setMessage(VERIFICATION_URL + token);
-
-	rabbitMQSender.send(mail);
-
-	logger.debug("Verification mail sent for email={}", registrationDTO.getEmailId());
-
-	registrationDTO.setPassword("*****************");
-
-	return registrationDTO;
     }
 
     @Override
@@ -105,7 +108,7 @@ public class UserServiceImpl implements IUserService {
 
 	BeanPropertyBindingResult errors = new BeanPropertyBindingResult(loginDTO, "loginDTO");
 
-	loginValidator.validate(loginDTO, errors);
+	userLoginValidator.validate(loginDTO, errors);
 
 	if (errors.hasErrors()) {
 	    logger.warn("Login validation failed for email={} | error={}", loginDTO.getEmailId(),
@@ -127,7 +130,7 @@ public class UserServiceImpl implements IUserService {
 
 	if (userServiceHelper.matches(loginDTO.getPassword(), user.getPassword())) {
 
-	    String token = provider.generateToken(user.getUserId().toString());
+	    String token = jwtProvider.generateToken(user.getUserId().toString());
 
 	    logger.info("Login successful for email={} | userId={}", loginDTO.getEmailId(), user.getUserId());
 
@@ -141,7 +144,7 @@ public class UserServiceImpl implements IUserService {
 
     @Override
     public void parseToken(String token) {
-	Long user_id = Long.parseLong(provider.parseToken(token));
+	Long user_id = Long.parseLong(jwtProvider.getEmailFromToken(token));
 	List<User> userList = userDAO.getAllUser();
 	for (User user : userList) {
 	    Long check_user_id = user.getUserId();
@@ -155,7 +158,7 @@ public class UserServiceImpl implements IUserService {
     @Override
     public boolean resetPassword(String token, String newPassword) {
 	try {
-	    String email = provider.parseToken(token);
+	    String email = jwtProvider.getEmailFromToken(token);
 	    if (email == null || email.isEmpty()) {
 		logger.warn("Invalid or expired token provided");
 		throw new UserExceptions("Invalid token");
@@ -204,8 +207,8 @@ public class UserServiceImpl implements IUserService {
 		throw new UserExceptions("Email does not match user record");
 	    }
 
-	    String token = provider.generateToken(user.getEmailId());
-	    JMSProvider.sendEmail(user.getEmailId(), "Password Reset", RESET_PASSWORD_URL + token);
+	    String token = jwtProvider.generateToken(user.getEmailId());
+	    jmsProvider.sendEmail(user.getEmailId(), "Password Reset", RESET_PASSWORD_URL + token);
 
 	    logger.info("Password reset email sent successfully for email={}", emailId);
 	    return true;
@@ -253,7 +256,7 @@ public class UserServiceImpl implements IUserService {
     @Override
     public Long getUserId(String token) {
 	try {
-	    Long id = Long.parseLong(provider.parseToken(token));
+	    Long id = Long.parseLong(jwtProvider.getEmailFromToken(token));
 	    logger.debug("Parsed user id={} from token", id);
 
 	    User user = userDAO.getUserById(id);
